@@ -45,10 +45,10 @@ function handleRequest(req, res) {
   } catch {
     // A hostile request target such as /\ or http://[::1 makes new URL throw; such a request
     // is still logged and answered with the ordinary 404 contract, not a reset connection.
-    // An unparsable target is logged with the fixed placeholder /, never with the client's text.
     pathname = null;
   }
 
+  // An unparsable target is logged with the fixed placeholder /, never with the client's text.
   logRequest(req.method, pathname === null ? '/' : pathname);
 
   if (req.method === 'GET' && pathname === '/hello') {
@@ -76,7 +76,7 @@ function handleServerError(error) {
   process.exitCode = 1;
 }
 
-// Close the server cleanly on CTRL+C: release idle connections, stop accepting, exit 0.
+// Close the server cleanly on CTRL+C: stop accepting, exit 0 unless a fatal status is recorded.
 function handleShutdown() {
   console.log(`Shutting down server on port ${listeningPort}`);
 
