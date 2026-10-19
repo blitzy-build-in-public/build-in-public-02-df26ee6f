@@ -4,6 +4,18 @@ let server = null;
 let listeningPort = null;
 let shuttingDown = false;
 
+// Keep a broken log consumer from ending the process: when stdout or stderr is a pipe whose reader
+// has gone away, the next write fails and, with no 'error' listener on the stream, Node raises that
+// failure as an uncaught exception that kills the process mid-request. The channel that failed is
+// the only place the detail could have been reported, so absorbing it is the whole handling.
+function handleStreamError() {
+  // Deliberate and complete: the failed channel cannot report its own failure, while the responses
+  // in flight and the documented shutdown path must still run.
+}
+
+process.stdout.on('error', handleStreamError);
+process.stderr.on('error', handleStreamError);
+
 // Resolve the port to bind from the PORT environment variable, validating it before use.
 function resolvePort() {
   const rawPort = process.env.PORT;
