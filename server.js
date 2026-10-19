@@ -2,6 +2,7 @@ const http = require('http');
 
 let server = null;
 let listeningPort = null;
+let shuttingDown = false;
 
 // Resolve the port to bind from the PORT environment variable, validating it before use.
 function resolvePort() {
@@ -62,7 +63,7 @@ function handleRequest(req, res) {
 
 // Report a fatal server error on stderr, so the process exits instead of crashing.
 function handleServerError(error) {
-  const code = error.code || error.name;
+  const code = error.code;
 
   if (code === 'EADDRINUSE') {
     console.error(
@@ -78,6 +79,12 @@ function handleServerError(error) {
 
 // Close the server cleanly on CTRL+C: release idle connections, stop accepting, exit 0.
 function handleShutdown() {
+  // A repeated signal is absorbed so the shutdown sequence and its two lines happen exactly once.
+  if (shuttingDown) {
+    return;
+  }
+
+  shuttingDown = true;
   console.log(`Shutting down server on port ${listeningPort}`);
 
   // Releasing idle keep-alive sockets is what lets server.close() finish promptly instead of
@@ -92,7 +99,9 @@ function handleShutdown() {
 
     // The status is set through process.exitCode rather than process.exit(), which would
     // discard these buffered stdout lines before the process ends.
-    process.exitCode = 0;
+    if (process.exitCode !== 1) {
+      process.exitCode = 0;
+    }
   });
 }
 
