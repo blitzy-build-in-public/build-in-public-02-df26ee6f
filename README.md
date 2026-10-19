@@ -66,6 +66,9 @@ The server then answers on port 4000 at `http://localhost:4000/hello`.
 
 With the server running on port 3000, run these commands from a second terminal.
 
+The commands below use `curl`, which ships with most systems; any HTTP client that can send the same
+requests works just as well.
+
 Request the one endpoint:
 
 ```bash
@@ -122,7 +125,7 @@ Both endpoints, in one table:
 | `GET` | `/hello` | `200 OK` | `text/plain` | `Hello world` |
 | Any other method | Anything else | `404 Not Found` | `text/plain` | `Not Found` |
 
-Matching is exact and case-sensitive, and is decided on the path alone:
+Matching is exact and case-sensitive, and it is decided on the method as well as the path:
 
 - A query string takes no part in the match, so `curl 'http://localhost:3000/hello?x=1'` returns `Hello world`.
 - `/hello/`, `/HELLO` and `//hello` are not the path `/hello`, so each returns `Not Found`.
@@ -136,7 +139,7 @@ Starting the server prints one line:
 Server listening on port 3000
 ```
 
-Every incoming request is logged before it is routed, in the format `[ISO-8601 timestamp] [HTTP method] [request path]`:
+Every request the server handles is logged before it is routed, in the format `[ISO-8601 timestamp] [HTTP method] [request path]`:
 
 ```console
 [2026-10-19T08:37:06.990Z] GET /hello
@@ -145,7 +148,13 @@ Every incoming request is logged before it is routed, in the format `[ISO-8601 t
 [2026-10-19T08:37:07.008Z] POST /hello
 ```
 
-Those four lines are the testing requests above, in order — the two calls to `/hello`, one of them with `-i`, then `/invalid`, then the `POST` to `/hello`. The timestamp is UTC, so each response appears in the terminal that issued the `curl` command while its log line appears in the terminal running the server. The logged path never carries a query string: the log line for `curl 'http://localhost:3000/hello?x=1'` reads `GET /hello`.
+A request line the HTTP parser rejects as malformed is answered by Node.js itself with `400 Bad Request`, before
+the server's code runs: no log line is written for it, and the catch-all `404` does not apply.
+
+Those four lines are the testing requests above, in order — the two calls to `/hello`, one of them with `-i`,
+then `/invalid`, then the `POST` to `/hello`. The timestamp is UTC. Each response appears in the terminal that
+issued the `curl` command, and its log line appears in the terminal running the server. The logged path never
+carries a query string: the log line for `curl 'http://localhost:3000/hello?x=1'` reads `GET /hello`.
 
 ## Shutdown
 
@@ -158,7 +167,7 @@ Server closed. Exiting.
 
 ## Environment Variable Configuration
 
-`PORT` is the only configuration input. When the variable is unset the server listens on port 3000, on every interface of the machine it runs on.
+`PORT` is the only configuration input. When the variable is absent from the environment the server listens on port 3000, on every interface of the machine it runs on.
 
 | `PORT` | Result |
 |--------|--------|
@@ -168,6 +177,7 @@ Server closed. Exiting.
 | `65535` | accepted — the highest accepted port |
 | `abc`, `3000abc`, `3000.5` | rejected — not an integer |
 | `1e3`, `0x10` | rejected — an integer, but below the smallest accepted port |
+| `PORT=` (empty) | rejected — an empty value reads as `0`, below the smallest accepted port |
 | `80`, `1023` | rejected — below 1024: privileged ports are never bound |
 | `65536` | rejected — above 65535 |
 
