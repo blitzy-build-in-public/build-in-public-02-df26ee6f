@@ -58,11 +58,11 @@ function handleRequest(req, res) {
   } catch {
     // A hostile request target such as /\ or http://[::1 makes new URL throw; such a request
     // is still logged and answered with the ordinary 404 contract, not a reset connection.
-    // The logged field drops any query string here too, so the logged path never carries one.
+    // An unparsable target is logged with the fixed placeholder /, never with the client's text.
     pathname = null;
   }
 
-  logRequest(req.method, pathname === null ? req.url.split('?')[0] : pathname);
+  logRequest(req.method, pathname === null ? '/' : pathname);
 
   if (req.method === 'GET' && pathname === '/hello') {
     sendText(res, 200, 'Hello world');
