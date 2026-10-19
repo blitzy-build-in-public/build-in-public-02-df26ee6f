@@ -2,19 +2,6 @@ const http = require('http');
 
 let server = null;
 let listeningPort = null;
-let shuttingDown = false;
-
-// Keep a broken log consumer from ending the process: when stdout or stderr is a pipe whose reader
-// has gone away, the next write fails and, with no 'error' listener on the stream, Node raises that
-// failure as an uncaught exception that kills the process mid-request. The channel that failed is
-// the only place the detail could have been reported, so absorbing it is the whole handling.
-function handleStreamError() {
-  // Deliberate and complete: the failed channel cannot report its own failure, while the responses
-  // in flight and the documented shutdown path must still run.
-}
-
-process.stdout.on('error', handleStreamError);
-process.stderr.on('error', handleStreamError);
 
 // Resolve the port to bind from the PORT environment variable, validating it before use.
 function resolvePort() {
@@ -91,12 +78,6 @@ function handleServerError(error) {
 
 // Close the server cleanly on CTRL+C: release idle connections, stop accepting, exit 0.
 function handleShutdown() {
-  // A repeated signal is absorbed so the shutdown sequence and its two lines happen exactly once.
-  if (shuttingDown) {
-    return;
-  }
-
-  shuttingDown = true;
   console.log(`Shutting down server on port ${listeningPort}`);
 
   // Releasing idle keep-alive sockets is what lets server.close() finish promptly instead of
@@ -129,7 +110,7 @@ function startServer(port) {
   listeningPort = port;
   server = http.createServer(handleRequest);
   server.on('error', handleServerError);
-  process.on('SIGINT', handleShutdown);
+  process.once('SIGINT', handleShutdown);
 
   server.listen(port, () => {
     console.log(`Server listening on port ${port}`);
